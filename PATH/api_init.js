@@ -44,15 +44,7 @@ app.get('/books/' ,(req,res) => {
     res.status(404).send({message : "You do not specified what do you want"});
 });
 
-app.get('/books/:id',async (req,res) => {
-    // const {id} = req.params;
-    // // const body = req.params;
-
-    // const book = books.find(ele => ele.id === id);
-
-    // if(!book) return res.status(404).send("This book does not exist");//////////WRONG
-
-    // res.send(book);//Find COMMAND
+app.get('/books/:id',async (req,res) => {    
 
     const book = new Library({
         Id : req.body.id,
@@ -86,21 +78,9 @@ app.post('/books' , (req,res) => {
 })
 
 app.post('/books/Add' ,async (req,res) => {//Add a Book in library
-    // // const {id} = req.params;
-    // const {id,name,game} = req.body;  
-
-    // const bookExistance = books.find(ele => ele.id === id);//this variable checks if the book exists(need fild not filter)
-
-    // if (bookExistance) return res.status(404).send("This book is already exists");//if statement takes place
-
-    // const book = {id,name,game};
-
-    // books.push(book);//Add the new book to inventory
-
-    // res.status(234).send({message : `The book  has been added to library`});
-
+    
     const book = new Library({
-        Id : req.body.id,
+        Id : req.body.Id,
         name : req.body.name,
         game :req.body.game
 
@@ -133,28 +113,24 @@ app.put('/books/Update' , (req,res) => {
     res.status(455).send({message : "You cannot perform an update to this"})
 });
 
-app.put('/books/Update/:id2',async (req,res) => {///////////////PUT COMMAND(Update)
-    const {id2} = req.params;
-    const {id,name,game} = req.body;      
-
-    let bookExistance = books.find(ele => ele.id === id2);//Find COMMAND
-
-    if (!bookExistance) return res.status(404).send("This book does not exist");//Check Existance 
-
+app.put('/books/Update/:id2',getBook,async (req,res) => {///////////////PUT COMMAND(Update)
     
-    const UpdateBooks = {
-        ...bookExistance,
-        id : id,
-        name : name,
-        game : game,
-    }
-    
-    
-    const bookIndex = books.findIndex(ele => ele.id === bookExistance.id);
+    if (req.body.name != null) {//Αν τα καινουρια πεδια του json δεν ειναι κενα τοτε αντικατεστησετα με τα καινουρια 
+        res.subscriber.name = req.body.name
+      }
 
-    books.splice(bookIndex,1,UpdateBooks);
+      if (req.body.game != null) {
+        res.subscriber.game = req.body.game
+      }
 
-    res.status(209).send(UpdateBooks);
+      try {
+        const updatedBook = await res.book.save()
+
+        res.json(updatedBook)
+        
+      } catch (err) {
+        res.status(400).json({ message: err.message })
+      }
 
 });
 
@@ -175,19 +151,44 @@ app.delete('/books/Delete' , (req,res) => {
     res.status(455).send({message : "You cannot delete this"});
 });
 
-app.delete('/books/Delete/:id2' ,async (req,res) => {////////////Delete COMMAND(delete)
+app.delete('/books/Delete/:id2',getBook ,async (req,res) => {////////////Delete COMMAND(delete)
     
-    const { id2 } = req.params;
+    try {
+        await res.book.remove();
 
-    let bookExistance = books.find(ele => ele.id === id2);
-    if (!bookExistance) return res.status(404).send('Book does not exist');
+        res.json({ message: 'Deleted Book' });
 
-    books = books.filter(ele => ele.id !== id2);
-
-    res.send('Success');
+      } catch (err) {
+        res.status(500).json({ message: err.message });
+      }
 
 });
 
+app.delete('/books/Delete/All', async (req,res) => {
+    try {
+        await Library.remove();
+    }catch(err){
+        res.status(500).json({message : err.message});
+    }
+})
+
 ///////////////////////////////////////////////////////////////////////////////////////////
+
+async function getBook(req, res ,next ){
+    let book
+    try{
+        book = await Library.findById(req.params.Id);
+        if(!book){
+            return res.status(404).json({message : "Cannot find that Book"});
+
+        }           
+        
+    }catch(err){
+        return res.status(500).json({message : err.message});
+
+    }
+    res.book = book;
+    next();
+}
 
 module.exports = app;
